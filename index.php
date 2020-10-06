@@ -4,22 +4,20 @@
 
 Kirby::plugin('steirico/kirby-plugin-icalendar', [
     'options' => [
-        'plugin.defaults' => [
-            'start' => 'startDate',
-            'end' => 'endDate',
-            'summary' => 'title',
-            'description' => 'description',
+        'plugin-defaults' => [
+            'start' => 'page.startDate',
+            'end' => 'page.endDate',
+            'summary' => 'page.title',
+            'description' => 'page.description',
             'location' => '',
             'geo' => '',
             'maxDepth' => 0,
-            'pages' => function($page) {
-                return $page->children()->listed();
-            },
+            'pages' => 'page.children.listed',
             'timezone' => 'Europe/Zurich',
-            'calendarName' => 'title',
-            'calendarDescription' => 'description'
+            'calendarName' => 'page.title',
+            'calendarDescription' => 'page.description'
         ],
-        'plugin.ignore' => [
+        'plugin-ignore' => [
             'page' => [],
             'template' => []
         ]

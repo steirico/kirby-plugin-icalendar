@@ -5,9 +5,11 @@ namespace steirico\kICalendar;
 use Kirby\Cms\Page;
 use Kirby\Cms\Pages;
 use Kirby\Cms\Response;
+use Kirby\Toolkit\Str;
 
 use Eluceo\iCal\Component\Calendar;
 use Eluceo\iCal\Component\Event;
+use Eluceo\iCal\Property\Event\Geo;
 
 class ICalendar {
 
@@ -17,8 +19,8 @@ class ICalendar {
     private $ignoreList;
 
     public function __construct() {
-        $this->defaultOptions = option(self::OPTIONS . "plugin.defaults");
-        $this->ignoreList = option(self::OPTIONS . "plugin.ignore");
+        $this->defaultOptions = option(self::OPTIONS . "plugin-defaults");
+        $this->ignoreList = option(self::OPTIONS . "plugin-ignore");
         $this->optionsCache = array();
     }
 
@@ -51,27 +53,42 @@ class ICalendar {
     }
 
 
-    private function pages(Page $page, $depth = -1, $maxDepth = -1): Pages {
+    private function pages(Page $page, $pageData, $depth = -1, $maxDepth = -1): Pages {
         $pages = new Pages();
         $depth++;
 
         $template = $page->intendedTemplate()->name();
         $options = $this->resolvedTemplateOptions($template);
 
-        $subPages = $options["pages"]($page);
+        $subPages = Str::query($options['pages'], $pageData);
 
-        if((($subPages->count() == 0) || ($maxDepth == $depth)) && (!$this->ignore($page))) {
-            $pages->add($page);
-        } else {
-            foreach ($subPages as $subPage){
-                $toAdd = $this->pages($subPage, $depth, $maxDepth);
-                if($toAdd->count() != 0) {
-                    $pages->add($toAdd);
+        if(is_a($subPages, "Kirby\Cms\Pages")) {
+            if((($subPages->count() == 0) || ($maxDepth == $depth)) && (!$this->ignore($page))) {
+                $pages->add($page);
+            } else {
+                foreach ($subPages as $subPage){
+                    $pageData['page'] = $subPage;
+                    $toAdd = $this->pages($subPage, $pageData, $depth, $maxDepth);
+                    if($toAdd->count() != 0) {
+                        $pages->add($toAdd);
+                    }
                 }
             }
         }
 
         return $pages;
+    }
+
+    private function evaluateProperty($property, $pageOptions, $pageData) {
+        $p = Str::query($pageOptions[$property], $pageData);
+        
+        if(is_string($p)) {
+            return $p;
+        } else if(is_a($p, "Kirby\Cms\Field")) {
+            return $p->value();
+        } else {
+            return false;
+        }
     }
 
     public function render(string $pageId): string {
@@ -81,40 +98,69 @@ class ICalendar {
             $pageOptions = $this->resolvedTemplateOptions($pageTemplate);
 
             $vCalendar = new Calendar($page->slug());
+            $kirby = kirby();
+            $pageData = [
+                'kirby' => $kirby,
+                'site'  => site(),
+                'page'  => $page,
+                'users' => $kirby->users(),
+                'user'  => $kirby->user()
+            ];
 
-            if($field = $page->{$pageOptions["calendarName"]}()) {
-                $vCalendar->setName($field->value());
+            $p = $this->evaluateProperty("calendarName", $pageOptions, $pageData);
+            if($p !== false) {
+                $vCalendar->setName($p);
             }
-            if($field = $page->{$pageOptions["calendarDescription"]}()) {
-                $vCalendar->setDescription($field->value());
+            $p = $this->evaluateProperty("calendarDescription", $pageOptions, $pageData);
+            if($p !== false) {
+                $vCalendar->setDescription($p);
             }
 
-            $pages = $this->pages($page);
+            $pages = $this->pages($page, $pageData);
 
             foreach($pages as $eventPage) {
                 $template = $eventPage->intendedTemplate()->name();
                 $options = $this->resolvedTemplateOptions($template);
                 $timezone = new \DateTimeZone($options['timezone']);
 
+                $pageData['page'] = $eventPage;
+
                 $vEvent = new Event();
-                if($field = $eventPage->{$options["summary"]}()) {
-                    $vEvent->setSummary($field->value());
-                }
-                if($field = $eventPage->{$options["start"]}()) {
-                    $date = $field->toDate() . " " . $options['timezone'];
-                    $vEvent->setDtStart(\DateTime::createFromFormat("U T", $date, $timezone));
-                }
-                if($field = $eventPage->{$options["end"]}()) {
-                    $date = $field->toDate() . " " . $options['timezone'];
-                    $vEvent->setDtEnd(\DateTime::createFromFormat("U T", $date, $timezone));
 
-                }
-                if($field = $eventPage->{$options["description"]}()) {
-                    $vEvent->setDescription($field->value());
+                $p = $this->evaluateProperty("summary", $pageOptions, $pageData);
+                if($p !== false) {
+                    $vEvent->setSummary($p);
                 }
 
-                //$vEvent->setLocation($eventPage->{$options["defaultLocation"]}()->value());
-                //$vEvent->setGeoLocation($eventPage->{$options["geo"]}()->value());
+                $p = $this->evaluateProperty("start", $pageOptions, $pageData);
+                if($p !== false) {
+                    $date = $p . " " . $options['timezone'];
+                    $vEvent->setDtStart(\DateTime::createFromFormat("Y-m-d H:i T", $date, $timezone));
+                }
+
+                $p = $this->evaluateProperty("end", $pageOptions, $pageData);
+                if($p !== false) {
+                    $date = $p . " " . $options['timezone'];
+                    $vEvent->setDtEnd(\DateTime::createFromFormat("Y-m-d H:i T", $date, $timezone));
+
+                }
+
+                $p = $this->evaluateProperty("description", $pageOptions, $pageData);
+                if($p !== false) {
+                    $vEvent->setDescription($p);
+                }
+
+                $p = $this->evaluateProperty("location", $pageOptions, $pageData);
+                if($p !== false) {
+                    $vEvent->setLocation($p);
+                }
+
+                $p = $this->evaluateProperty("geo", $pageOptions, $pageData);
+                if($p !== false) {
+                    $parts = explode(';', $p);
+                    $geo = new Geo((float) $parts[0], (float) $parts[1]);
+                    $vEvent->setGeoLocation($geo);
+                }
 
                 $vCalendar->addComponent($vEvent);
             }
