@@ -17,9 +17,13 @@ Kirby::plugin('steirico/kirby-plugin-icalendar', [
             'calendarName' => 'page.title',
             'calendarDescription' => 'page.description'
         ],
-        'plugin-ignore' => [
-            'page' => [],
-            'template' => []
+        'plugin-include' => [
+            'page' => [
+                '*' => false
+            ],
+            'template' => [
+                '*' => true
+            ]
         ]
     ],
     'routes' => [

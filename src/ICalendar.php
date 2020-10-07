@@ -16,11 +16,11 @@ class ICalendar {
     const OPTIONS = "steirico.kirby-plugin-icalendar.";
     private $defaultOptions;
     private $optionsCache;
-    private $ignoreList;
+    private $includeList;
 
     public function __construct() {
         $this->defaultOptions = option(self::OPTIONS . "plugin-defaults");
-        $this->ignoreList = option(self::OPTIONS . "plugin-ignore");
+        $this->includeList = option(self::OPTIONS . "plugin-include");
         $this->optionsCache = array();
     }
 
@@ -40,16 +40,30 @@ class ICalendar {
         return $templateOptions;
     }
 
-    private function ignore($page) {
-        if (array_key_exists($page->id(), $this->ignoreList['page'])){
-            return true;
+    private function includePage($page) {
+        $pageId = $page->id();
+        $templateName = $page->intendedTemplate()->name();
+
+        if (array_key_exists($pageId, $this->includeList['page'])){
+            return $this->includeList['page'][$pageId];
         }
 
-        if (array_key_exists($page->intendedTemplate()->name(), $this->ignoreList['template'])){
-            return true;
+        if (array_key_exists($templateName, $this->includeList['template'])){
+            return $this->includeList['template'][$templateName];
+        }
+        
+
+        if (array_key_exists('*', $this->includeList['page'])){
+            if ($this->includeList['page']['*']) {
+                return true;
+            }
         }
 
-        return false;
+        if (array_key_exists('*', $this->includeList['template'])){
+            return $this->includeList['template']['*'];
+        }
+
+        return true;
     }
 
 
@@ -57,13 +71,21 @@ class ICalendar {
         $pages = new Pages();
         $depth++;
 
+        if($maxDepth == $depth) {
+            if($this->includePage($page)) {
+                $pages->add($page);
+            }
+
+            return $pages;
+        }
+
         $template = $page->intendedTemplate()->name();
         $options = $this->resolvedTemplateOptions($template);
 
         $subPages = Str::query($options['pages'], $pageData);
 
         if(is_a($subPages, "Kirby\Cms\Pages")) {
-            if((($subPages->count() == 0) || ($maxDepth == $depth)) && (!$this->ignore($page))) {
+            if($subPages->count() == 0 && $this->includePage($page)){
                 $pages->add($page);
             } else {
                 foreach ($subPages as $subPage){
@@ -74,14 +96,21 @@ class ICalendar {
                     }
                 }
             }
+        } else if($this->includePage($page)) {
+            $pages->add($page);
         }
 
         return $pages;
     }
 
     private function evaluateProperty($property, $pageOptions, $pageData) {
-        $p = Str::query($pageOptions[$property], $pageData);
-        
+        $ql = $pageOptions[$property];
+        if(strpos($ql, '{{') !== false && strpos($ql, '}}') !== false) {
+            $p = Str::template($pageOptions[$property], $pageData);
+        } else {
+            $p = Str::query($pageOptions[$property], $pageData);
+        }
+
         if(is_string($p)) {
             return $p;
         } else if(is_a($p, "Kirby\Cms\Field")) {
@@ -116,7 +145,7 @@ class ICalendar {
                 $vCalendar->setDescription($p);
             }
 
-            $pages = $this->pages($page, $pageData);
+            $pages = $this->pages($page, $pageData, 0, $pageOptions['maxDepth']);
 
             foreach($pages as $eventPage) {
                 $template = $eventPage->intendedTemplate()->name();
