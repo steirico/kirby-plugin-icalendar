@@ -196,6 +196,11 @@ class ICalendar {
                     $vEvent->setGeoLocation($geo);
                 }
 
+                $p = $this->evaluateProperty("url", $pageOptions, $pageData);
+                if($p !== false) {
+                    $vEvent->setUrl($p);
+                }
+
                 $vCalendar->addComponent($vEvent);
             }
 

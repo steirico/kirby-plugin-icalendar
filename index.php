@@ -11,6 +11,7 @@ Kirby::plugin('steirico/kirby-plugin-icalendar', [
             'description' => 'page.description',
             'location' => '',
             'geo' => '',
+            'url' => '{{page.url}}',
             'maxDepth' => 0,
             'pages' => 'page.children.listed',
             'timezone' => 'Europe/Zurich',
