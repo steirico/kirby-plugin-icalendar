@@ -163,15 +163,20 @@ class ICalendar {
 
                 $p = $this->evaluateProperty("start", $pageOptions, $pageData);
                 if($p !== false) {
-                    $date = $p . " " . $options['timezone'];
-                    $vEvent->setDtStart(\DateTime::createFromFormat("Y-m-d H:i T", $date, $timezone));
+                    $d = ICalendar::makeDateTime($p, $timezone);
+                    if (is_bool($d)) {
+                        continue;
+                    }
+                    $vEvent->setDtStart($d);
                 }
 
                 $p = $this->evaluateProperty("end", $pageOptions, $pageData);
                 if($p !== false) {
-                    $date = $p . " " . $options['timezone'];
-                    $vEvent->setDtEnd(\DateTime::createFromFormat("Y-m-d H:i T", $date, $timezone));
-
+                    $d = ICalendar::makeDateTime($p, $timezone);
+                    if (is_bool($d)) {
+                        continue;
+                    }
+                    $vEvent->setDtEnd($d);
                 }
 
                 $p = $this->evaluateProperty("description", $pageOptions, $pageData);
@@ -203,5 +208,9 @@ class ICalendar {
         } else {
             return '';
         }
+    }
+
+    private static function makeDateTime($date, $timezone) {
+        return \DateTime::createFromFormat("Y-m-d H:i T", $date, $timezone);
     }
 }

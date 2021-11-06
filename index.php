@@ -5,8 +5,8 @@
 Kirby::plugin('steirico/kirby-plugin-icalendar', [
     'options' => [
         'plugin-defaults' => [
-            'start' => 'page.startDate',
-            'end' => 'page.endDate',
+            'start' => 'page.startDate.toDate("Y-m-d H:i T")',
+            'end' => 'page.endDate.toDate("Y-m-d H:i T")',
             'summary' => 'page.title',
             'description' => 'page.description',
             'location' => '',
