@@ -18,7 +18,7 @@
         }
     ],
     "require": {
-        "getkirby/composer-installer": "^1.1",
+        "getkirby/composer-installer": "^1.2",
         "eluceo/ical": "^0.16.0"
     },
     "autoload": {
