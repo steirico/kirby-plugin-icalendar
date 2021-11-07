@@ -126,7 +126,7 @@ class ICalendar {
             $pageTemplate = $page->intendedTemplate()->name();
             $pageOptions = $this->resolvedTemplateOptions($pageTemplate);
 
-            $vCalendar = new Calendar($page->slug());
+            $vCalendar = new Calendar("//steirico/kirby-plugin-icalendar//" . $page->id());
             $kirby = kirby();
             $pageData = [
                 'kirby' => $kirby,
