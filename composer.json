@@ -1,7 +1,7 @@
 {
     "name": "steirico/kirby-plugin-icalendar",
     "description": "Serve kirby pages as iCalendar. This plugin allows to serve ics files for pages and subpages containing event information.",
-    "version": "1.0.0",
+    "version": "0.1.0",
     "type": "kirby-plugin",
     "license": "MIT",
     "keywords": [
